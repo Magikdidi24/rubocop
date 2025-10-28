@@ -3,14 +3,14 @@
 module RuboCop
   # This class parses the special `rubocop:disable` comments in a source
   # and provides a way to check if each cop is enabled at arbitrary line.
-  class CommentConfig
+  class CommentConfig # rubocop:disable Metrics/ClassLength,Style/Documentation
     extend SimpleForwardable
 
     CONFIG_DISABLED_LINE_RANGE_MIN = -Float::INFINITY
 
     # This class provides an API compatible with RuboCop::DirectiveComment
     # to be used for cops that are disabled in the config file
-    class ConfigDisabledCopDirectiveComment
+    class ConfigDisabledCopDirectiveComment # rubocop:disable Style/Documentation
       include RuboCop::Ext::Comment
 
       attr_reader :text, :loc, :line_number
@@ -94,7 +94,7 @@ module RuboCop
       end
     end
 
-    def analyze # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+    def analyze # rubocop:todo Metrics/AbcSize,Metrics/MethodLength
       return {} if @no_directives
 
       analyses = Hash.new { |hash, key| hash[key] = CopAnalysis.new([], nil) }
@@ -103,7 +103,7 @@ module RuboCop
       each_directive do |directive|
         if directive.push?
           @stack.push(snapshot_analyses(analyses))
-          apply_push_pop_args(analyses, directive)
+          apply_push_args(analyses, directive)
         elsif directive.pop?
           pop_state(analyses, directive.line_number) if @stack.any?
         else
@@ -136,7 +136,7 @@ module RuboCop
         next unless analysis.start_line_number
 
         analyses[cop_name] = CopAnalysis.new(
-          analysis.line_ranges + [analysis.start_line_number..(pop_line - 1)],
+          analysis.line_ranges + [analysis.start_line_number...pop_line],
           nil
         )
       end
@@ -150,10 +150,11 @@ module RuboCop
       end
     end
 
-    def apply_push_pop_args(analyses, directive)
-      directive.push_pop_args.each do |operation, cop_names|
+    def apply_push_args(analyses, directive)
+      directive.push_args.each do |operation, cop_names|
         cop_names.each do |cop_name|
-          apply_cop_operation(analyses, operation, qualified_cop_name(cop_name), directive.line_number)
+          apply_cop_operation(analyses, operation, qualified_cop_name(cop_name),
+                              directive.line_number)
         end
       end
     end
@@ -166,10 +167,7 @@ module RuboCop
       when '+' # Enable cop
         return unless start_line
 
-        analyses[cop_name] = CopAnalysis.new(
-          analysis.line_ranges + [start_line..line],
-          nil
-        )
+        analyses[cop_name] = CopAnalysis.new(analysis.line_ranges + [start_line..line], nil)
       when '-' # Disable cop
         return if start_line
 

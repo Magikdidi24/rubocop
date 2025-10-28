@@ -4,7 +4,7 @@ module RuboCop
   # This class wraps the `Parser::Source::Comment` object that represents a
   # special `rubocop:disable` and `rubocop:enable` comment and exposes what
   # cops it contains.
-  class DirectiveComment
+  class DirectiveComment # rubocop:disable Style/Documentation
     # @api private
     LINT_DEPARTMENT = 'Lint'
     # @api private
@@ -22,7 +22,7 @@ module RuboCop
     # @api private
     COPS_PATTERN = "(all|#{COP_NAMES_PATTERN})"
     # @api private
-    PUSH_POP_ARGS_PATTERN = "([+\\-]#{COP_NAME_PATTERN_NC}(?:\\s+[+\\-]#{COP_NAME_PATTERN_NC})*)"
+    PUSH_ARGS_PATTERN = "([+\\-]#{COP_NAME_PATTERN_NC}(?:\\s+[+\\-]#{COP_NAME_PATTERN_NC})*)"
     # @api private
     AVAILABLE_MODES = %w[disable enable todo push pop].freeze
     # @api private
@@ -33,7 +33,7 @@ module RuboCop
     DIRECTIVE_HEADER_PATTERN = "#{DIRECTIVE_MARKER_PATTERN}((?:#{AVAILABLE_MODES.join('|')}))\\b"
     # @api private
     DIRECTIVE_COMMENT_REGEXP = Regexp.new(
-      "#{DIRECTIVE_HEADER_PATTERN}(?:\\s+#{COPS_PATTERN}|\\s+#{PUSH_POP_ARGS_PATTERN})?"
+      "#{DIRECTIVE_HEADER_PATTERN}(?:\\s+#{COPS_PATTERN}|\\s+#{PUSH_ARGS_PATTERN})?"
         .gsub(' ', '\s*')
     )
     # @api private
@@ -98,11 +98,11 @@ module RuboCop
     # Returns match captures to directive comment pattern
     def match_captures
       @match_captures ||= begin
-        return [nil, nil] unless @match_data
+        return nil unless @match_data
 
         captures = @match_data.captures
         mode = captures[0]
-        # COPS_PATTERN is at captures[1], PUSH_POP_ARGS_PATTERN is at captures[4]
+        # COPS_PATTERN is at captures[1], PUSH_ARGS_PATTERN is at captures[4]
         cops = captures[1] || captures[4]
         [mode, cops]
       end
@@ -128,9 +128,9 @@ module RuboCop
       mode == 'pop'
     end
 
-    # Returns the push/pop arguments as a hash of cop names with their operations
-    def push_pop_args
-      @push_pop_args ||= parse_push_pop_args
+    # Returns the push arguments as a hash of cop names with their operations
+    def push_args
+      @push_args ||= parse_push_args
     end
 
     # Checks if this directive enables all cops
@@ -209,8 +209,8 @@ module RuboCop
       cops - [LINT_SYNTAX_COP]
     end
 
-    def parse_push_pop_args
-      return {} unless (push? || pop?) && cops
+    def parse_push_args
+      return {} unless push? && cops
 
       args = {}
       cops.split.each do |cop_spec|

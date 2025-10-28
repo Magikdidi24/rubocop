@@ -593,5 +593,89 @@ RSpec.describe RuboCop::CommentConfig do
         expect(method_disabled).not_to include(4, 5, 6, 7, 8, 9, 10)
       end
     end
+
+    context 'pop without matching push should be ignored gracefully' do
+      let(:source) do
+        <<~RUBY
+          def process
+            x = 1
+            # rubocop:pop
+            y = 2
+            # rubocop:disable Style/For
+            for i in [1, 2, 3]
+              puts i
+            end
+          end
+        RUBY
+      end
+
+      it 'ignores pop without push and continues normally' do
+        for_disabled = disabled_lines_of_cop('Style/For')
+
+        # Style/For should be disabled from line 5 onwards
+        expect(for_disabled).to include(5, 6, 7, 8)
+        expect(for_disabled).not_to include(1, 2, 3, 4)
+      end
+    end
+
+    context 'multiple consecutive push/pop blocks' do
+      let(:source) do
+        <<~RUBY
+          def process
+            # rubocop:push -Style/GuardClause
+            if condition1
+              return value1
+            end
+            # rubocop:pop
+            normal_code
+            # rubocop:push -Metrics/AbcSize
+            complex_calculation
+            more_complexity
+            # rubocop:pop
+            more_normal_code
+          end
+        RUBY
+      end
+
+      it 'handles multiple independent push/pop blocks correctly' do
+        guard_disabled = disabled_lines_of_cop('Style/GuardClause')
+        abc_disabled = disabled_lines_of_cop('Metrics/AbcSize')
+
+        # Style/GuardClause: disabled only in first block (2-5)
+        expect(guard_disabled).to include(2, 3, 4, 5)
+        expect(guard_disabled).not_to include(1, 6, 7, 8, 9, 10, 11, 12, 13)
+
+        # Metrics/AbcSize: disabled only in second block (8-10)
+        expect(abc_disabled).to include(8, 9, 10)
+        expect(abc_disabled).not_to include(1, 2, 3, 4, 5, 6, 7, 11, 12, 13)
+      end
+    end
+
+    context 'push without arguments followed by traditional enable/disable' do
+      let(:source) do
+        <<~RUBY
+          def process
+            x = 1
+            # rubocop:push
+            # rubocop:disable Style/NumericPredicate
+            if x.size == 0
+              puts 'empty'
+            end
+            # rubocop:pop
+            if x.size == 1
+              puts 'one'
+            end
+          end
+        RUBY
+      end
+
+      it 'push without args acts as state snapshot, traditional directives work inside' do
+        numeric_disabled = disabled_lines_of_cop('Style/NumericPredicate')
+
+        # Style/NumericPredicate: disabled 4-7, enabled after pop
+        expect(numeric_disabled).to include(4, 5, 6, 7)
+        expect(numeric_disabled).not_to include(1, 2, 3, 8, 9, 10, 11)
+      end
+    end
   end
 end
